@@ -1,1 +1,1 @@
-# mc714
+Repositório da disciplina Sistemas Distribuídos
