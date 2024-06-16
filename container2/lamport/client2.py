@@ -4,9 +4,9 @@ import json
 
 class ClientMessageHandler:
 
-    def __init__(self, HOST, PORT, DATA_PAYLOAD, MESSAGE):
+    def __init__(self, SERVER_HOST, PORT, DATA_PAYLOAD, MESSAGE):
 
-        self.HOST = HOST # ip do servidor
+        self.SERVER_HOST = SERVER_HOST # ip do servidor
         self.PORT = PORT # porta para conexão
         self.DATA_PAYLOAD = DATA_PAYLOAD # tamanho máximo possível para transmissão de dados
         self.MESSAGE = MESSAGE # mensagem a ser enviada ao servidor	
@@ -15,15 +15,12 @@ class ClientMessageHandler:
     def startConnection(self):
 
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # cria socket IPv4, TCP/IP
-        serverAddress = (self.HOST, self.PORT) # define endereço com host e porta
+        serverAddress = (self.SERVER_HOST, self.PORT) # define endereço com host e porta
         sock.connect(serverAddress) # conecta socket ao servidor
-        print("Process{} sending message to Process{}".format(self.MESSAGE['senderID'], self.MESSAGE['receiverID']))
         try:
-            print("Process{} sending...".format(self.MESSAGE['senderID']))
-            MESSAGE_JSON = json.dumps(self.MESSAGE)
-            sock.send(MESSAGE_JSON.encode('utf-8'))
-            data = sock.recv(self.DATA_PAYLOAD)
-            print("Received: {}".format(data))
+            MESSAGE_JSON = json.dumps(self.MESSAGE) # serializa JSON em string
+            sock.send(MESSAGE_JSON.encode('utf-8')) # envia mensagem codificada em bytes com UTF-8 
+            data = sock.recv(self.DATA_PAYLOAD) # mensagem de resposta recebida
         except socket.error as e:
             print("Socket error: {}".format(str(e)))
         except Exception as e:
@@ -51,10 +48,11 @@ class Process:
             self.lamportClock = self.lamportClock + self.timeRate
 
     def sendMessageForProcess1(self):
-        HOST = '172.18.0.2'
+        SERVER_HOST = '172.18.0.5' # host do servidor
+        TARGET_HOST = '172.18.0.2' # host do processo alvo
         # dicionario que irá transmitir objeto JSON, armazena id do processo remetente, id do processo destinatário, relógio lógico de Lamport
-        MESSAGE = {'senderID': self.id, 'receiverID': 1, 'lamportClock': self.lamportClock} 
-        newConnection = ClientMessageHandler(HOST, 8000, 1024, MESSAGE)
+        MESSAGE = {'senderID': self.id, 'receiverID': 1, 'lamportClock': self.lamportClock, 'TARGET_HOST': TARGET_HOST} 
+        newConnection = ClientMessageHandler(SERVER_HOST, 8000, 1024, MESSAGE)
         newConnection.startConnection()
 
     #def sendMessageForProcess3();
