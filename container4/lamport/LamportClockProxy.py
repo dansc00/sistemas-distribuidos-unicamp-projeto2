@@ -8,7 +8,7 @@ class LamportClockProxy:
 		self.HOST = HOST # ip do host
 		self.PORT = PORT # porta para conexão
 		self.DATA_PAYLOAD = DATA_PAYLOAD # tamanho máximo possível para transmissão de dados
-		self.processes = processes
+		self.processes = processes # vetor que armazena relógios lógicos de cada processo
 
 	def printOutput(self):
 
@@ -58,14 +58,17 @@ class LamportClockProxy:
 			if data:
 				
 				dataDecode = data.decode('utf-8') # decodifica mensagem em bytes para string
-				dataJson = json.loads(dataDecode) # converte mensagem em string para dicionario
-				
-				response = self.forwardMessage(dataJson)
-				responseDecode = response.decode('utf-8')
-				responseJson = json.loads(responseDecode)
-				self.processes[dataJson['receiverID']-1] = responseJson['lamportClock'] 
-				self.printOutput()
+				dataJson = json.loads(dataDecode) # converte em JSON
 
+				# encaminha mensagem para o processo alvo e recebe o relógio lógico atualizado como resposta
+				response = self.forwardMessage(dataJson) 
+				responseDecode = response.decode('utf-8') # decodifica resposta
+				responseJson = json.loads(responseDecode) # converte em JSON
+				self.processes[dataJson['receiverID']-1] = responseJson['lamportClock'] # atualiza vetor de relógios lógicos 
+				self.printOutput() # imprime saída
+				
+				responseStr = json.dumps(responseJson) # converte em string
+				conn.send(responseStr.encode('utf-8')) # envia resposta
 				conn.close() # encerra conexão
 			
 HOSTNAME = socket.gethostname() # armazena hostname
