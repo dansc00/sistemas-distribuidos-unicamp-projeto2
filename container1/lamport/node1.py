@@ -43,7 +43,7 @@ class Process:
         self.lamportClock = newLamportClock
     
     # inicia conexões do servidor
-    def openServerConnection(self):
+    def openServerConnection(self, TARGET_ID, TARGET_HOST):
 
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # cria socket para conexão via IPv4 , utilizando TCP
         serverAddress = (self.HOST, self.PORT)
@@ -57,16 +57,37 @@ class Process:
 
         receiveThread = threading.Thread(target=self.handleReceive, args=(conn,)) # thread que manipula recebimento de mensagens
 
-        # thread manipula envio de mensagens ao Processo2
-        sendThread2 = threading.Thread(target=self.sendMessage, args=(conn, 2, '172.18.0.3'))
-        # thread manipula envio de mensagens ao Processo2
-        sendThread3 = threading.Thread(target=self.sendMessage, args=(conn, 3, '172.18.0.4')) 
-        
-    def startClient(self, TARGET_HOST):
+        # thread manipula envio de mensagens ao processo alvo
+        sendThread = threading.Thread(target=self.sendMessage, args=(conn, TARGET_ID, TARGET_HOST))
+
+        receiveThread.start()
+        sendThread.start()
+
+        receiveThread.join()
+        sendThread.join()
+
+        conn.close()
+        sock.close() 
+
+    # conecta a servidor para envio de mensagem    
+    def startClient(self, TARGET_ID, TARGET_HOST):
 
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # cria socket IPv4, TCP/IP
-        serverAddress = (TARGET_HOST, self.PORT) # define endereço com host e porta
+        serverAddress = (TARGET_HOST, self.PORT) # define endereço alvo com host e porta
         sock.connect(serverAddress) # conecta socket ao servidor alvo
+
+        receiveThread = threading.Thread(target=self.handleReceive, args=(sock,)) # thread que manipula recebimento de mensagens
+
+        # thread manipula envio de mensagens ao processo alvo
+        sendThread = threading.Thread(target=self.sendMessage, args=(sock, TARGET_ID, TARGET_HOST))
+
+        receiveThread.start()
+        sendThread.start()
+
+        receiveThread.join()
+        sendThread.join()
+
+        sock.close()
 
     def handleReceive(self, conn):
 
@@ -79,7 +100,7 @@ class Process:
                 dataJson = json.loads(dataDecode) # converte objeto string para JSON
 
                 print("Mensagem recebida do  Processo{}".format(dataJson['senderID']))
-                print("Relógio lógico atual do Processo{}: {} / Relógio lógico atual do Processo{}: {}".format(dataJson['receiverID'], self.getLamportClock(), dataJson['senderID']), dataJson['lamportClock'])
+                print("Relógio lógico atual do Processo{}: {} / Relógio lógico atual do Processo{}: {}".format(self.ID, self.getLamportClock(), dataJson['senderID'], dataJson['lamportClock']))
 
                 self.lamportClockAlgorithm(dataJson) # executa correção de relógio lógico           
                 print("Relógio lógico atualizado do Processo{}: {}".format(dataJson['receiverID'], self.getLamportClock()))
@@ -96,10 +117,11 @@ class Process:
         while(True):
             try:
 
-                self.setLamportClock(self.getLamportClock + 1) # acrescenta evento de envio ao relógio lógico
+                self.setLamportClock(self.getLamportClock() + 1) # acrescenta evento de envio ao relógio lógico
                 # dicionario que irá transmitir objeto JSON, armazena id do processo remetente, id do processo destinatário, relógio lógico de Lamport
                 message = {'senderID': self.ID, 'receiverID': receiverID, 'lamportClock': self.lamportClock, 'TARGET_HOST': TARGET_HOST}
                 messageStr = json.dumps(message) # serializa JSON em string
+                time.sleep(self.timeRate)
                 conn.send(messageStr.encode('utf-8')) # envia mensagem codificada em bytes com UTF-8 
                 #response = conn.recv(self.DATA_PAYLOAD) # mensagem de resposta recebida
                 
@@ -115,25 +137,18 @@ class Process:
 # executa apenas quando chamado diretamente, evita execução quando importado por outro script
 if __name__ == "__main__":
 
-    process1 = Process(0, 0, 0, 1) # inicializa Process1
+    HOSTNAME = socket.gethostname() # armazena hostname
+    HOST = socket.gethostbyname(socket.gethostname()) # armazena host
+
+    process1 = Process(0, 0, 0, 1, HOST, 8000, 1024) # inicializa processo
     process1.simulatesProcessExecution() # simula execução de eventos
 
-    HOSTNAME = socket.gethostname() # armazena hostname
-    HOST = socket.gethostbyname(socket.gethostname()) # armazena host 
+    serverThread = threading.Thread(target=process1.openServerConnection, args=(2, '172.18.0.3',))
+    clientThread = threading.Thread(target=process1.startClient, args=(2, '172.18.0.3',))
 
-    openServerThread = threading.Thread(target=process1.openServerConnection, args=(HOST, 8000, 1024,))
-    sendMessageThread2 = threading.Thread(target=process1.sendMessageToProcess, args=('172.18.0.5', '172.18.0.3', 2,))
-    sendMessageThread3 = threading.Thread(target=process1.sendMessageToProcess, args=('172.18.0.5', '172.18.0.4', 3,))
+    serverThread.start()
+    clientThread.start()
 
-    openServerThread.start()
-    openServerThread.join()
-
-    while True:
-        sendMessageThread2.start()
-        sendMessageThread2.join()
-        time.sleep(2)
-
-        sendMessageThread3.start()
-        sendMessageThread3.join()
-        time.sleep(2)
+    serverThread.join()
+    clientThread.join()
 
