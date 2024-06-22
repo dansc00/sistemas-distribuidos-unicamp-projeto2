@@ -6,7 +6,7 @@ import time
 
 class Process:
 
-    def __init__(self, lamportClock, timeRate, numEvents, ID, HOST, PORT, DATA_PAYLOAD):
+    def __init__(self, lamportClock, timeRate, numEvents, serverFlag, ID, HOST, PORT, DATA_PAYLOAD):
 
         self.lamportClock = lamportClock # armazena contador do relógio lógico de Lamport
         self.timeRate = timeRate # taxa de tempo que cada evento consome
@@ -15,6 +15,7 @@ class Process:
         self.HOST = HOST # endereço ip do host
         self.PORT = PORT # porta para gerenciar conexões
         self.DATA_PAYLOAD = DATA_PAYLOAD # tamanho máximo permitido para troca de dados
+        self.serverFlag = serverFlag # flag marca se o servidor está em execução
 
     # corrige o relógio lógico do processo baseado na mensagem recebida
     def lamportClockAlgorithm(self, message):
@@ -45,15 +46,17 @@ class Process:
     # inicia conexões do servidor
     def openServerConnection(self, TARGET_ID, TARGET_HOST):
 
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # cria socket para conexão via IPv4 , utilizando TCP
-        serverAddress = (self.HOST, self.PORT)
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1) # permite reutilização do endereço host/port
-        sock.bind(serverAddress) # vincula endereço de host e porta ao socket
-        sock.listen(1) # socket entra em operação aguardando conexão de cliente, enfileirando uma conexão até que seja aceita
-        print("Iniciando servidor no endereço {} porta {}...".format(self.HOST, self.PORT))
-        print("")
-        # aceita conexão, retorna uma tupla com um File Descriptor, usado para receber e enviar dados, e, o endereço do cliente
-        conn, address = sock.accept() 
+        if(self.serverFlag == False):
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # cria socket para conexão via IPv4 , utilizando TCP
+            serverAddress = (self.HOST, self.PORT)
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1) # permite reutilização do endereço host/port
+            sock.bind(serverAddress) # vincula endereço de host e porta ao socket
+            sock.listen(1) # socket entra em operação aguardando conexão de cliente, enfileirando uma conexão até que seja aceita
+            print("Iniciando servidor no endereço {} porta {}...".format(self.HOST, self.PORT))
+            print("")
+            # aceita conexão, retorna uma tupla com um File Descriptor, usado para receber e enviar dados, e, o endereço do cliente
+            conn, address = sock.accept()
+            self.serverFlag = True 
 
         receiveThread = threading.Thread(target=self.handleReceive, args=(conn,)) # thread que manipula recebimento de mensagens
 
@@ -67,7 +70,8 @@ class Process:
         sendThread.join()
 
         conn.close()
-        sock.close() 
+        sock.close()
+        self.serverFlag = False 
 
     # conecta a servidor para envio de mensagem    
     def startClient(self, TARGET_ID, TARGET_HOST):
@@ -104,6 +108,7 @@ class Process:
 
                 self.lamportClockAlgorithm(dataJson) # executa correção de relógio lógico           
                 print("Relógio lógico atualizado do Processo{}: {}".format(dataJson['receiverID'], self.getLamportClock()))
+                print("=======================================================================")
                 #response = self.getLamportClock()
                 #conn.send(response.encode('utf-8')) # envia resposta
             except Exception as e:
@@ -140,12 +145,14 @@ if __name__ == "__main__":
     HOSTNAME = socket.gethostname() # armazena hostname
     HOST = socket.gethostbyname(socket.gethostname()) # armazena host
 
-    process2 = Process(0, 0, 0, 2, HOST, 8000, 1024) # inicializa processo
+    process2 = Process(0, 0, 0, False, 2, HOST, 8000, 1024) # inicializa processo
     process2.simulatesProcessExecution() # simula execução de eventos
 
+    # constrói threads de servidor e cliente
     serverThread = threading.Thread(target=process2.openServerConnection, args=(1, '172.18.0.2',))
     clientThread = threading.Thread(target=process2.startClient, args=(1, '172.18.0.2',))
 
+    # inicia threads
     serverThread.start()
     clientThread.start()
 
