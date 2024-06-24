@@ -1,6 +1,6 @@
 # !/bin/bash
 
-# starts container, runs the terminal and stops container at the end
+# inicia container, roda o terminal sh e para o container no fim da execução
 docker start container1
-docker exec -it container1 /bin/sh 
+docker exec -it container1 /bin/sh #/usr/bin/python3 /home/lamport/node1.py 
 docker stop container1

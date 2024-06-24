@@ -1,0 +1,8 @@
+docker ps = visualizar conteineres ativos
+docker ps -a = visualizar todos conteineres
+docker rm container = remover container
+docker rmi image = remover imagem
+docker images = listar imagens
+docker network ls = listar redes docker
+docker network inspect minha_rede = lista detalhes da rede
+docker network create minha_rede = cria rede docker  
