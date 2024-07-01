@@ -129,7 +129,7 @@ if __name__ == "__main__":
     HOSTNAME = socket.gethostname() # armazena hostname
     HOST = socket.gethostbyname(socket.gethostname()) # armazena host
 
-    process = Process(2, False, True) # inicializa processo
+    process = Process(3, False, True) # inicializa processo
     
     serverThread = threading.Thread(target=process.serverHandler, args=(HOST,8000,1024))
     serverThread.start()
@@ -137,6 +137,6 @@ if __name__ == "__main__":
     if(process.getStart() == True):
         start = input("iniciar compartilhamento de recurso: ")
         if(start == "ok"):
-            clientThread = threading.Thread(target=process.clientHandler, args=('172.18.0.4',8000))
+            clientThread = threading.Thread(target=process.clientHandler, args=('172.18.0.2',8000))
             clientThread.start()
 
