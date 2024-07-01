@@ -111,15 +111,15 @@ class Process:
     # inicia servidor e manipula recebimento de mensagem
     def serverHandler(self, HOST, PORT, DATA_PAYLOAD, TARGET_HOST):
 
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # cria socket para conexão via IPv4 , utilizando TCP
-        serverAddress = (HOST, PORT) # tupla host/porta
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1) # permite reutilização do endereço host/port
-        sock.bind(serverAddress) # vincula endereço de host e porta ao socket
-        sock.listen(1) # socket entra em operação aguardando conexão de cliente, enfileirando uma conexão até que seja aceita
-        # aceita conexão, retorna uma tupla com um File Descriptor, usado para receber e enviar dados, e, o endereço do cliente
-        conn, address = sock.accept()
-
         while(True):
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # cria socket para conexão via IPv4 , utilizando TCP
+            serverAddress = (HOST, PORT) # tupla host/porta
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1) # permite reutilização do endereço host/port
+            sock.bind(serverAddress) # vincula endereço de host e porta ao socket
+            sock.listen(1) # socket entra em operação aguardando conexão de cliente, enfileirando uma conexão até que seja aceita
+            # aceita conexão, retorna uma tupla com um File Descriptor, usado para receber e enviar dados, e, o endereço do cliente
+            conn, address = sock.accept()
+
             try:
                 
                 data = conn.recv(DATA_PAYLOAD) # recebe dados do cliente
@@ -142,21 +142,17 @@ class Process:
 
                     # verifica se a fila de eleição de líder está cheia
                     if(newQueue.isQueueFull() == True):
-                        
+                        # encerra eleição e inicia compartilhamento de lider
                         print("Fila de eleição final: {}".format(newQueue.getNodesQueue()))
                         leader = self.finishLeaderElection(newQueue) # recebe maior ID da fila
                         print("ID do líder eleito: {}".format(leader))
                         self.setToFinishLeaderElection(True)
                         self.shareLeader(TARGET_HOST, PORT, DATA_PAYLOAD, leader)
                     else:
-
+                        # repassa fila de eleição
                         newQueue = newQueue.toJson() # converte objeto em string JSON
                         message = {'senderID': self.ID, 'electionQueue': newQueue, 'isLeaderElected': False}
-
-                        # inicia thread de envio de mensagem
-                        sendThread = threading.Thread(target=self.sendMessage, args=(TARGET_HOST,PORT,DATA_PAYLOAD,message))
-                        sendThread.start()
-                        sendThread.join()
+                        self.sendMessage(TARGET_HOST, PORT, DATA_PAYLOAD, message)
                 else:
 
                     print("Líder repassado com sucesso: {}".format(dataJson['leader']))
@@ -205,9 +201,7 @@ class Process:
         # id do remetente , fila de eleição, flag para fim da eleição de líder
         message = {'senderID': self.ID, 'electionQueue': electionQueue, 'isLeaderElected': False}
 
-        sendThread = threading.Thread(target=self.sendMessage, args=(TARGET_HOST,PORT,DATA_PAYLOAD,message))
-        sendThread.start()
-        sendThread.join()
+        self.sendMessage(TARGET_HOST, PORT, DATA_PAYLOAD, message)
 
     # enfileira ID de processo na fila de eleição de líder        
     def buildLeaderElection(self, electionQueue):
@@ -230,9 +224,7 @@ class Process:
     def shareLeader(self, TARGET_HOST, PORT, DATA_PAYLOAD, leader):
         
         message = {'senderID': self.ID, 'leader': leader, 'isLeaderElected': True}
-        sendThread = threading.Thread(target=self.sendMessage,args=(TARGET_HOST,PORT,DATA_PAYLOAD,message))
-        sendThread.start()
-        sendThread.join()
+        self.sendMessage(TARGET_HOST, PORT, DATA_PAYLOAD, message)
 
 # executa apenas quando chamado diretamente, evita execução quando importado por outro script
 if __name__ == "__main__":
@@ -256,5 +248,9 @@ if __name__ == "__main__":
         start = input("iniciar eleição de líder: ")
         if(start == 'ok'):
             clientThread.start()
+            clientThread.join()
+    
+    serverThread.join()
+
             
     
