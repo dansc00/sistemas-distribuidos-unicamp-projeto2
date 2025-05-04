@@ -1,1 +1,1 @@
-Trabalho 2 da disciplina Sistemas Distribuídos
+Projeto 2 da disciplina Sistemas Distribuídos
