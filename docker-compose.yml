@@ -1,0 +1,75 @@
+services:
+  node1:
+    build: 
+      context: .
+      dockerfile: node1/Dockerfile
+    container_name: node1
+    networks:
+      custom_network:
+        ipv4_address: 172.18.0.3
+    ports: 
+      - "8001:8001"
+    volumes:
+      - ./node1:/node1
+      - ./resources:/resources
+    environment:
+      - NODE=node1
+      - NODE_IPV4=172.18.0.3
+      - CONNECTION_PORT=8001
+      - NODE2_IPV4=172.18.0.4
+      - NODE3_IPV4=172.18.0.5
+      - ALGORITHM=${ALGORITHM:-mutex}
+    depends_on:
+      - node2
+      - node3
+
+  node2:
+    build:
+      context: .
+      dockerfile: node2/Dockerfile
+    container_name: node2
+    networks:
+      custom_network:
+        ipv4_address: 172.18.0.4
+    ports: 
+      - "8002:8002"
+    volumes:
+      - ./node2:/node2
+      - ./resources:/resources
+    environment:
+      - NODE=node2
+      - NODE_IPV4=172.18.0.4
+      - CONNECTION_PORT=8002
+      - NODE1_IPV4=172.18.0.3
+      - NODE3_IPV4=172.18.0.5
+      - ALGORITHM=${ALGORITHM:-mutex}
+    depends_on:
+      - node3
+
+  node3:
+    build:
+      context: .
+      dockerfile: node3/Dockerfile
+    container_name: node3
+    networks:
+      custom_network:
+        ipv4_address: 172.18.0.5
+    ports: 
+      - "8003:8003"
+    volumes:
+      - ./node3:/node3
+      - ./resources:/resources
+    environment:
+      - NODE=node3
+      - NODE_IPV4=172.18.0.5
+      - CONNECTION_PORT=8003
+      - NODE1_IPV4=172.18.0.3
+      - NODE2_IPV4=172.18.0.4
+      - ALGORITHM=${ALGORITHM:-mutex}
+
+networks:
+  custom_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.18.0.0/16
